@@ -1,0 +1,26 @@
+check.cpp:2:17: warning: using directive refers to implicitly-defined namespace 'std'
+using namespace std;
+                ^
+check.cpp:9:2: warning: control reaches end of non-void function [-Wreturn-type]
+        }
+        ^
+check.cpp:12:1: warning: control reaches end of non-void function [-Wreturn-type]
+}
+^
+check.cpp:18:15: warning: format specifies type 'int' but the argument has type 'long long' [-Wformat]
+        printf("%c", d);
+                ~~   ^
+                %lld
+check.cpp:19:15: error: expected expression
+        printf("%d", [] (){return 5});
+                     ^
+check.cpp:20:8: error: function definition is not allowed here
+int x(){
+       ^
+check.cpp:21:2: error: expected '}'
+}
+ ^
+check.cpp:15:11: note: to match this '{'
+int main(){
+          ^
+4 warnings and 3 errors generated.

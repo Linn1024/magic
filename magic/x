@@ -1,0 +1,5 @@
+C:\Users\Linn\AppData\Local\Temp\a-a2407c.o:(.text+0xc): undefined reference to `std::ios_base::Init::Init()'
+C:\Users\Linn\AppData\Local\Temp\a-a2407c.o:(.text+0x3c): undefined reference to `std::ios_base::Init::~Init()'
+C:\Users\Linn\AppData\Local\Temp\a-a2407c.o:(.text+0x72): undefined reference to `std::cin'
+C:\Users\Linn\AppData\Local\Temp\a-a2407c.o:(.text+0x85): undefined reference to `std::istream::operator>>(int&)'
+clang.exe: error: linker command failed with exit code 1 (use -v to see invocation)

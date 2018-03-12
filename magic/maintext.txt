@@ -1,0 +1,48 @@
+define i32 @main(i32 %argv, i8** %args) #2 {
+entry:
+  %retval = alloca i32, align 4
+  %argv.addr = alloca i32, align 4
+  %args.addr = alloca i8**, align 8
+  %num = alloca i32, align 4
+  %i = alloca i32, align 4
+  store i32 0, i32* %retval
+  store i32 %argv, i32* %argv.addr, align 4
+  store i8** %args, i8*** %args.addr, align 8
+  %0 = load i8**, i8*** %args.addr, align 8
+  %arrayidx = getelementptr inbounds i8*, i8** %0, i64 1
+  %1 = load i8*, i8** %arrayidx, align 8
+  %call = call i32 @atoi(i8* %1)
+  store i32 %call, i32* %num, align 4
+  store i32 0, i32* %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.inc, %entry
+  %2 = load i32, i32* %i, align 4
+  %3 = load i32, i32* %num, align 4
+  %cmp = icmp slt i32 %2, %3
+  br i1 %cmp, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  call void
+  %call1 = call i32 @_Z15newMainCountersv()
+  %cmp2 = icmp ne i32 %call1, 0
+  br i1 %cmp2, label %if.then, label %if.end
+
+if.then:                                          ; preds = %for.body
+  store i32 %call1, i32* %retval
+  br label %for.end
+
+if.end:                                           ; preds = %for.body
+  br label %for.inc
+
+for.inc:                                          ; preds = %if.end
+  %4 = load i32, i32* %i, align 4
+  %inc = add nsw i32 %4, 1
+  store i32 %inc, i32* %i, align 4
+  br label %for.cond
+
+for.end:                                          ; preds = %if.then, %for.cond
+  call void
+  %5 = load i32, i32* %retval
+  ret i32 %5
+}
