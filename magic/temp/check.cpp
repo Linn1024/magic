@@ -1,15 +1,20 @@
 #include<stdio.h>
 #include<iostream>
+#include <cstdlib>
 
 #include <stdlib.h> 
 
 
 using namespace std;
 
-int p = 1234;
+
+void p(){
+	cout << "5";
+}
 
 int main(){
-	p = 4321;
-	//std::cout << p;
-	return 0; 
+	int i = 0;
+	if (i != 0) {
+		p();
+	}
 }

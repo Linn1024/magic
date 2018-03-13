@@ -14,6 +14,7 @@ endOfMain = 0
 destructors = []
 globalInit = ''
 globalInitString = 0
+countersString = 0
 globalVars = []
 
 
@@ -33,21 +34,22 @@ def checkFunctions():
 	global atoiExists
 	global globalInit
 	global globalInitString
+	global countersString
+	printfRegex = re.compile("\s*declare i32 @printf.*")
+	atoiRegex = re.compile("declare i32 @atoi.*")
+	initRegex = re.compile("\s*call void @__cxx_global_var_init()")
+	globalRegex = re.compile(".*(@_GLOBAL__sub_I_.*\(\))")
+	#atExitRegex = re.compile("(\s*.*%.*) = .*atexit(.*)")
 	for j in range(len(fileOut)):
 		i = fileOut[j]
-		printfRegex = re.compile("\s*declare i32 @printf.*")
-		atoiRegex = re.compile("declare i32 @atoi.*")
-		initRegex = re.compile("\s*call void @__cxx_global_var_init()")
-		globalRegex = re.compile(".*(@_GLOBAL__sub_I_.*\(\))")
 		if printfRegex.match(i):
 			printfExists = True
 		if atoiRegex.match(i):
 			atoiExists = True
-		if initRegex.match(i):
-			fileOut[j] = ';' + i
+		#if atExitRegex.match(i):
+		#	fileOut[j] =  atExitRegex.search(i).group(1) + '= load i64, i64* @"counter$0", align 8\n'
 		if globalRegex.match(i):
 			globalInitString = j
-
 			globalInit = globalRegex.search(i).group(1)
 				
 
@@ -86,6 +88,8 @@ def mainStuff():
 	global fileOut
 	global startOfMain
 	global endOfMain
+	global countersString
+	countersStringRegex = re.compile("\s*addCountersHere$")
 	startOfMain = -1
 	mainRegex = re.compile("\s*define i32 @main().*")
 	for i in range(len(fileOut)):
@@ -96,14 +100,24 @@ def mainStuff():
 		return
 	retRegex = re.compile("\s*ret.*")	
 	for i in range(startOfMain, len(fileOut)):
+		if countersStringRegex.match(fileOut[i]):
+			countersString = i
+			fileOut[i] = ';' + fileOut[i]	
+
 		if retRegex.match(fileOut[i]):
 			endOfMain = i + 1
 			return
+
+def makeGlobalFunction():
+	['define internal void @_GLOBAL__sub_I_check.cpp() #0 {]
+		entry:
 
 
 def addGlobalInitVars():
 	global fileOut
 	global globalInitString
+	if globalInitString == 0:
+		makeGlobalFunction()
 	fileOut = fileOut[:globalInitString + 2] + ['store ' + i[1] + ' ' + i[2] + ', ' + i[1] + '* ' + i[0] + ' ' + ', align ' + i[3] + '\n' for i in globalVars] + fileOut[globalInitString + 2:]
 
 def changeMain():
@@ -138,11 +152,12 @@ def findDestructors():
 	global destructors
 	for i in range(len(fileOut)):
 		dtorRegex = re.compile(".*call.*(@__dtor_.*)\).*")
+		atExitRegex = re.compile("(\s*.*%.*) = .*atexit(.*)")
 		g = dtorRegex.search(fileOut[i])
 		if g != None:
-			#fileOut[i] = ";" + fileOut[i]
 			destructors += g.groups(1)
-			#sys.stderr.write(g.group(1) + "\n")
+			sys.stderr.write(g.group(1) + "\n")
+			fileOut[i] =  atExitRegex.search(fileOut[i]).group(1) + '= load i64, i64* @"counter$0", align 8\n'
 
 def addDestructors():
 	global fileOut
@@ -150,14 +165,15 @@ def addDestructors():
 	mainStuff()
 	findDestructors()
 
-	fileOut = fileOut[:endOfMain - 1] + ['call void ' + i + '()\n' for i in destructors] + fileOut[endOfMain - 1:]
+	fileOut = fileOut[:countersString] + ['call void ' + i + '()\n' for i in destructors] + fileOut[countersString:]
 
 def printCounters():
 
 	global fileOut
 	global numOfIncrements
+	global countersString
 	mainStuff()
-	e = endOfMain - 1
+	e = countersString
 	res = []
 	for i in range(numOfIncrements):
 		res += ['%counter$' + str(i) + '= load i64, i64* ' + counter(i) + ', align 8\n']
@@ -169,13 +185,18 @@ def printCounters():
 fileOut = strings[:]
 
 checkFunctions()
-initGlobals()
-addGlobalInitVars()
+
 addIncrements()           
 addGlobalCounters(numOfIncrements)
-
-changeMain()
+initGlobals()
+changeMain() 
 addGlobalInit()
+checkFunctions()
+
+addGlobalInitVars()
+
+
+
 addDestructors()
 printCounters()
 print(*fileOut)
