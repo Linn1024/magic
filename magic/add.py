@@ -6,6 +6,7 @@ fileIn = open(sys.argv[1], 'r')
 strings = fileIn.readlines()
 printfExists = False
 atoiExists = False
+memsetExists = False
 
 fileOut = []
 numOfIncrements = 0
@@ -35,15 +36,19 @@ def checkFunctions():
 	global globalInit
 	global globalInitString
 	global countersString
+	global memsetExists
 	printfRegex = re.compile("\s*declare i32 @printf.*")
+	memsetRegex = re.compile("\s*declare void \@llvm\.memset\.p0i8\.i64")
 	atoiRegex = re.compile("declare i32 @atoi.*")
 	initRegex = re.compile("\s*call void @__cxx_global_var_init()")
-	globalRegex = re.compile(".*(@_GLOBAL__sub_I_.*\(\))")
+	globalRegex = re.compile("define.*(@_GLOBAL__sub_I_.*\(\))")
 	#atExitRegex = re.compile("(\s*.*%.*) = .*atexit(.*)")
 	for j in range(len(fileOut)):
 		i = fileOut[j]
 		if printfRegex.match(i):
 			printfExists = True
+		if memsetRegex.match(i):
+			memsetExists = True
 		if atoiRegex.match(i):
 			atoiExists = True
 		#if atExitRegex.match(i):
@@ -59,7 +64,16 @@ def addGlobalCounters(numOfCounters):
 	for i in range(1, len(strings)):
 		if targetRegex.match(strings[i - 1]) and not targetRegex.match(strings[i]):
 			#fileOut.append(strings[i])
-			fileOut = fileOut[:i] + [counter(i) + ' = global i64 0, align 8\n' for i in range(numOfCounters)] + (['declare i32 @printf(i8*, ...)\n'] if not printfExists else []) + (['declare i32 @atoi(i8*)\n'] if not atoiExists else []) + ['@.strCounters = private unnamed_addr constant [6 x i8] c"%lld \00", align 1\n'] + fileOut[i:]
+			fileOut = fileOut[:i] + [counter(i) + ' = global i64 0, align 8\n' for i in range(numOfCounters)] + \
+			(['declare i32 @printf(i8*, ...)\n'] if not printfExists else []) + \
+			(['declare i32 @atoi(i8*)\n'] if not atoiExists else []) + \
+			(['declare void @llvm.memset.p0i8.i64(i8* nocapture, i8, i64, i32, i1)\n'] if not memsetExists else []) + \
+			['@.strCounters = private unnamed_addr constant [6 x i8] c"%lld \00", align 1\n'] + \
+			['@dataArray = global [300000 x i8] zeroinitializer, align 16'] + \
+			['@.strData.File = private unnamed_addr constant [9 x i8] c"data.txt\00", align 1'] + \
+			['@.strData.File1 = private unnamed_addr constant [2 x i8] c"r\00", align 1'] +\ 
+			['@.strData.File2 = private unnamed_addr constant [6 x i8] c"%i %i\00", align 1'] + \
+  			fileOut[i:]
 
 #			if not checkPrintf():
 #				fileOut += ['declare i32 @printf(i8*, ...)\n']
@@ -109,16 +123,41 @@ def mainStuff():
 			return
 
 def makeGlobalFunction():
-	['define internal void @_GLOBAL__sub_I_check.cpp() #0 {]
-		entry:
+	global fileOut
+	tmp = ['define internal void @_GLOBAL__sub_I_my_prog.cpp() #0 {\n', 'entry:\n', 'ret void\n', '}\n']
+	global globalInit
+	global startOfMain
+	mainStuff()
+	globalInit = '@_GLOBAL__sub_I_my_prog.cpp()'
+	#sys.stderr.write(str(startOfMain))
 
+	fileOut = fileOut[:startOfMain - 1] + tmp + fileOut[startOfMain - 1:]
+
+
+def zeroInit(i):
+	arrayRegex = re.compile('\[(.*) x (.*)\]')
+	if not arrayRegex.match(i[1]):
+		return 'store ' + i[1] + ' ' + i[2] + ', ' + i[1] + '* ' + i[0] + ' ' + ', align ' + i[3] + '\n'
+	else:
+
+		bytes = arrayRegex.search(i[1]).group(2)	 
+		amount = arrayRegex.search(i[1]).group(1)
+		sizeOne = '%size1' + i[0][1:] + ' = getelementptr ' + i[1] + ' , ' + i[1]+ '* null, i32 1\n'
+		size = '%size' + i[0][1:] + ' = ptrtoint ' + i[1]+ '* %size1' + i[0][1:] + ' to i64\n'
+		memset = sizeOne + size + '  call void @llvm.memset.p0i8.i64(i8* bitcast (' + i[1] + '* ' +  i[0] + ' to i8*), i8 0, i64 %size' + i[0][1:] + ', i32 16 , i1 false)\n'
+		#sys.stderr.write(str(sizeOne))
+		return memset
+"""  call void @llvm.memset.p0i8.i64(i8* bitcast ([100 x i32]* @b to i8*), i8 48, i64 100, i32 16, i1 false)
+  %size = getelementptr [10000 x %"class.std::__cxx11::basic_string"], [10000 x %"class.std::__cxx11::basic_string"]* null, i32 1
+  %size1 = ptrtoint [10000 x %"class.std::__cxx11::basic_string"]* %size to i32 
+"""
 
 def addGlobalInitVars():
 	global fileOut
 	global globalInitString
-	if globalInitString == 0:
-		makeGlobalFunction()
-	fileOut = fileOut[:globalInitString + 2] + ['store ' + i[1] + ' ' + i[2] + ', ' + i[1] + '* ' + i[0] + ' ' + ', align ' + i[3] + '\n' for i in globalVars] + fileOut[globalInitString + 2:]
+	checkFunctions()
+	#sys.stderr.write(str(globalInitString))
+	fileOut = fileOut[:globalInitString + 2] + [zeroInit(i) for i in globalVars] + fileOut[globalInitString + 2:]
 
 def changeMain():
 	global startOfMain
@@ -129,7 +168,6 @@ def changeMain():
 	fileOut[startOfMain] = "define i32 @_Z15newMainCountersv()" + mainRegex.search(fileOut[startOfMain]).group(1) + "\n"
 	with open ('maintext.txt') as f:
 		read_data = f.readlines()
-	sys.stderr.write(fileOut[endOfMain])
 	fileOut = fileOut[:startOfMain - 1] + read_data + fileOut[startOfMain - 1:]
 	
 def addGlobalInit():
@@ -156,7 +194,6 @@ def findDestructors():
 		g = dtorRegex.search(fileOut[i])
 		if g != None:
 			destructors += g.groups(1)
-			sys.stderr.write(g.group(1) + "\n")
 			fileOut[i] =  atExitRegex.search(fileOut[i]).group(1) + '= load i64, i64* @"counter$0", align 8\n'
 
 def addDestructors():
@@ -185,6 +222,8 @@ def printCounters():
 fileOut = strings[:]
 
 checkFunctions()
+if globalInitString == 0:
+	makeGlobalFunction()
 
 addIncrements()           
 addGlobalCounters(numOfIncrements)
@@ -199,4 +238,5 @@ addGlobalInitVars()
 
 addDestructors()
 printCounters()
+#sys.stderr.write(str(globalVars))
 print(*fileOut)

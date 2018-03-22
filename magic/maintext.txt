@@ -13,17 +13,59 @@ entry:
   %1 = load i8*, i8** %arrayidx, align 8
   %call = call i32 @atoi(i8* %1)
   store i32 %call, i32* %num, align 4
+  %pointerDataStart = alloca i8*, align 8
+  %pointerDataSize = alloca i32, align 4
+  %pointerDataFile = alloca %struct._iobuf*, align 8
+  %j = alloca i8*, align 8
+  %i2 = alloca i8*, align 8
+  store i32 0, i32* %retval
+  %callData = call %struct._iobuf* @fopen(i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.strData.File, i32 0, i32 0), i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.strData.File1, i32 0, i32 0))
+  store %struct._iobuf* %callData, %struct._iobuf** %pointerDataFile, align 8
+  %2 = load %struct._iobuf*, %struct._iobuf** %pointerDataFile, align 8
+  %callData1 = call i32 (%struct._iobuf*, i8*, ...) @fscanf(%struct._iobuf* %0, i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.strData.File2, i32 0, i32 0), i8** %pointerDataStart, i32* %pointerDataSize)
+  %3 = load i8*, i8** %pointerDataStart, align 8
+  store i8* %3, i8** %j, align 8
+  br label %for.condData
+
+for.condData:                                         ; preds = %for.inc, %entry
+  %4 = load i8*, i8** %j, align 8
+  %5 = load i8*, i8** %pointerDataStart, align 8
+  %6 = load i32, i32* %pointerDataSize, align 4
+  %idx.ext = sext i32 %6 to i64
+  %add.ptrData = getelementptr inbounds i8, i8* %3, i64 %idx.ext
+  %cmpData = icmp ult i8* %4, %add.ptrData
+  br i1 %cmp, label %for.bodyData, label %for.endData
+
+for.bodyData:                                         ; preds = %for.cond
+  %7 = load i8*, i8** %j, align 8
+  %8 = load i8, i8* %7, align 1
+  %9 = load i8*, i8** %j, align 8
+  %10 = load i8*, i8** %pointerDataStart, align 8
+  %sub.ptr.lhs.cast = ptrtoint i8* %9 to i64
+  %sub.ptr.rhs.cast = ptrtoint i8* %10 to i64
+  %sub.ptr.sub = sub i64 %sub.ptr.lhs.cast, %sub.ptr.rhs.cast
+  %arrayidx = getelementptr inbounds [300000 x i8], [300000 x i8]* @dataArray, i32 0, i64 %sub.ptr.sub
+  store i8 %6, i8* %arrayidx, align 1
+  br label %for.inc
+
+for.inc:                                          ; preds = %for.body
+  %11 = load i8*, i8** %j, align 8
+  %incdec.ptr = getelementptr inbounds i8, i8* %9, i32 1
+  store i8* %incdec.ptr, i8** %j, align 8
+  br label %for.condData
+
+for.endData:                                          ; preds = %for.cond
   store i32 0, i32* %i, align 4
   br label %for.cond
 
 for.cond:                                         ; preds = %for.inc, %entry
-  %2 = load i32, i32* %i, align 4
-  %3 = load i32, i32* %num, align 4
-  %cmp = icmp slt i32 %2, %3
+  %12 = load i32, i32* %i, align 4
+  %13 = load i32, i32* %num, align 4
+  %cmp = icmp slt i32 %12, %13
   br i1 %cmp, label %for.body, label %for.end
 
 for.body:                                         ; preds = %for.cond
-  %cmpFirst = icmp ne i32 %2, 0
+  %cmpFirst = icmp ne i32 %12, 0
   br i1 %cmpFirst, label %if.thenFirst, label %if.endFirst
   if.thenFirst:                                          ; preds = %entry
     call void
@@ -43,13 +85,13 @@ if.end:                                           ; preds = %for.body
   br label %for.inc
 
 for.inc:                                          ; preds = %if.end
-  %4 = load i32, i32* %i, align 4
-  %inc = add nsw i32 %4, 1
+  %14 = load i32, i32* %i, align 4
+  %inc = add nsw i32 %14, 1
   store i32 %inc, i32* %i, align 4
   br label %for.cond
 
 for.end:                                          ; preds = %if.then, %for.cond
   ;call void
-  %5 = load i32, i32* %retval
-  ret i32 %5
+  %15 = load i32, i32* %retval
+  ret i32 %15
 }

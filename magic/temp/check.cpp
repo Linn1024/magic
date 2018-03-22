@@ -7,14 +7,10 @@
 
 using namespace std;
 
-
-void p(){
-	cout << "5";
-}
-
 int main(){
-	int i = 0;
-	if (i != 0) {
-		p();
-	}
+	int a;
+	freopen("in", "r", stdin);
+
+	cin >> a;
+	cout << a;
 }
